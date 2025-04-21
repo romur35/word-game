@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Guess Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    .box {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      font-size: 24px;
+      text-align: center;
+      line-height: 40px;
+      margin: 2px;
+      background-color: #eee;
+      border: 1px solid #999;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🧠 Word Guess Game</h2>
+
+  <div id="definition">
+    <strong>Definition:</strong> <span id="definition-text"></span>
+  </div>
+
+  <div id="word-container" style="margin: 10px 0;"></div>
+
+  <input type="text" id="guess-input" placeholder="Type your guess" />
+  <button onclick="makeGuess()">Guess</button>
+  <button onclick="revealLetter()">Reveal Letter (-2 pts)</button>
+
+  <p id="message"></p>
+  <p><strong>Score:</strong> <span id="score">0</span></p>
+
+  <script>
+    const wordData = {
+      definition: "A piece of furniture with a flat top and one or more legs, providing a level surface for working, eating, or placing things.",
+      word: "TABLE"
+    };
+
+    let revealedLetters = Array(wordData.word.length).fill('?');
+    let revealedIndexes = new Set();
+    let score = 0;
+    let gameEnded = false;
+
+    document.getElementById('definition-text').textContent = wordData.definition;
+    renderBoxes();
+    updateScore();
+
+    function renderBoxes() {
+      const container = document.getElementById('word-container');
+      container.innerHTML = '';
+      revealedLetters.forEach(letter => {
+        const box = document.createElement('div');
+        box.className = 'box';
+        box.textContent = letter;
+        container.appendChild(box);
+      });
+    }
+
+    function updateScore() {
+      document.getElementById('score').textContent = score;
+    }
+
+    function makeGuess() {
+      if (gameEnded) return;
+
+      const guess = document.getElementById('guess-input').value.toUpperCase();
+      const message = document.getElementById('message');
+
+      if (guess === wordData.word) {
+        revealedLetters = wordData.word.split('');
+        renderBoxes();
+        score += 10;
+        updateScore();
+        message.textContent = "🎉 Correct! Well done!";
+        gameEnded = true;
+      } else {
+        score -= 1;
+        updateScore();
+        message.textContent = "❌ Incorrect guess. Try again or reveal a letter.";
+      }
+    }
+
+    function revealLetter() {
+      if (gameEnded) return;
+
+      let unrevealed = [];
+      for (let i = 0; i < wordData.word.length; i++) {
+        if (!revealedIndexes.has(i)) {
+          unrevealed.push(i);
+        }
+      }
+
+      if (unrevealed.length === 0) {
+        document.getElementById('message').textContent = "All letters already revealed.";
+        return;
+      }
+
+      const index = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      revealedIndexes.add(index);
+      revealedLetters[index] = wordData.word[index];
+      score -= 2;
+      renderBoxes();
+      updateScore();
+      document.getElementById('message').textContent = "🔤 A letter was revealed.";
+    }
+  </script>
+
+</body>
+</html>
