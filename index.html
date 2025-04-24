@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Kelime Oyunu</title>
+  <style>
+    body {
+      background: #f6f9fc;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .game-container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    #word-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .box {
+      flex: 0 0 auto;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      text-align: center;
+      line-height: 50px;
+      background-color: #edf2f4;
+      color: #2b2d42;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .box.revealed {
+      background-color: #2b2d42;
+      color: white;
+      cursor: default;
+    }
+    input[type="text"] {
+      padding: 10px;
+      font-size: 18px;
+      width: 75%;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      margin-top: 15px;
+    }
+    button {
+      background-color: #8d99ae;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 6px;
+    }
+    button:hover {
+      background-color: #6c7a96;
+    }
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+      color: #ef233c;
+    }
+    #score {
+      font-weight: bold;
+      color: #2b2d42;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h2>Kelime Tahmin Oyunu</h2>
+    <div style="margin-bottom: 20px;"><strong>Tanım:</strong> <span id="definition-text"></span></div>
+    <div id="word-container"></div>
+    <input type="text" id="guess-input" placeholder="Tahmininizi yazın" />
+    <br>
+    <button onclick="makeGuess()">Tahmin Et</button>
+    <button onclick="showAnswer()">Doğru Cevabı Göster</button>
+    <p id="message"></p>
+    <p><strong>Bu Kelimelik Skor:</strong> <span id="score">0</span></p>
+  </div>
+
+  <script>
+    let wordList = [];
+    let currentIndex = 0;
+    let score = 0;
+    let revealedLetters = [];
+    let revealedIndexes = new Set();
+    let gameEnded = false;
+
+    function fetchWords() {
+      fetch('kelimeler.json')
+        .then(response => response.json())
+        .then(data => {
+          wordList = data;
+          startGame();
+        })
+        .catch(() => {
+          document.getElementById('definition-text').textContent = "Kelimeler yüklenemedi.";
+        });
+    }
+
+    function startGame() {
+      score = 0;
+      updateScore();
+
+      if (currentIndex >= wordList.length) {
+        document.getElementById('definition-text').textContent = "Tüm kelimeler tamamlandı!";
+        document.getElementById('word-container').innerHTML = '';
+        return;
+      }
+
+      const currentWord = wordList[currentIndex].word;
+      revealedLetters = Array(currentWord.length).fill('?');
+      revealedIndexes = new Set();
+
+      let hintCount = 1;
+      if (currentWord.length >= 5 && currentWord.length <= 7) hintCount = 2;
+      if (currentWord.length >= 8) hintCount = 3;
+
+      while (revealedIndexes.size < hintCount) {
+        const randomIndex = Math.floor(Math.random() * currentWord.length);
+        revealedIndexes.add(randomIndex);
+      }
+
+      gameEnded = false;
+      document.getElementById('definition-text').textContent = wordList[currentIndex].definition;
+      document.getElementById('message').textContent = '';
+      document.getElementById('guess-input').value = '';
+      renderBoxes();
+    }
+
+    function renderBoxes() {
+      const container = document.getElementById('word-container');
+      container.innerHTML = '';
+      const currentWord = wordList[currentIndex].word;
+      revealedLetters = currentWord.split('').map((char, i) => revealedIndexes.has(i) ? char : '?');
+      revealedLetters.forEach((letter, i) => {
+        const box = document.createElement('div');
+        box.className = 'box' + (revealedIndexes.has(i) ? ' revealed' : '');
+        box.textContent = letter;
+        if (!revealedIndexes.has(i)) {
+          box.addEventListener('click', () => revealLetterAtIndex(i));
+        }
+        container.appendChild(box);
+      });
+    }
+
+    function updateScore() {
+      document.getElementById('score').textContent = score;
+    }
+
+    function makeGuess() {
+      if (gameEnded) return;
+      const guess = document.getElementById('guess-input').value.toUpperCase();
+      const currentWord = wordList[currentIndex].word;
+      if (guess === currentWord) {
+        for (let i = 0; i < currentWord.length; i++) revealedIndexes.add(i);
+        renderBoxes();
+
+        const unrevealedCount = currentWord.length - revealedIndexes.size;
+        score += unrevealedCount * 10;
+
+        gameEnded = true;
+        document.getElementById('message').textContent = "✔ Doğru!";
+        updateScore();
+        setTimeout(() => {
+          currentIndex++;
+          startGame();
+        }, 1500);
+      } else {
+        score -= 1;
+        document.getElementById('message').textContent = "Yanlış tahmin!";
+        updateScore();
+      }
+    }
+
+    function revealLetterAtIndex(index) {
+      const currentWord = wordList[currentIndex].word;
+      if (!revealedIndexes.has(index)) {
+        revealedIndexes.add(index);
+        renderBoxes();
+        updateScore();
+      }
+    }
+
+    function showAnswer() {
+      const currentWord = wordList[currentIndex].word;
+
+      const unrevealedCount = currentWord.length - revealedIndexes.size;
+      score += unrevealedCount * 10;
+
+      for (let i = 0; i < currentWord.length; i++) revealedIndexes.add(i);
+      renderBoxes();
+      document.getElementById('message').textContent = `Doğru cevap: ${currentWord}`;
+      gameEnded = true;
+      updateScore();
+      setTimeout(() => {
+        currentIndex++;
+        startGame();
+      }, 2000);
+    }
+
+    fetchWords();
+  </script>
+</body>
+</html>
